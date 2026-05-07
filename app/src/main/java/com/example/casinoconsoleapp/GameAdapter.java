@@ -1,31 +1,31 @@
 package com.example.casinoconsoleapp;
 
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import java.util.ArrayList;
 import java.util.List;
+import common.Game;
 
 public class GameAdapter extends RecyclerView.Adapter<GameAdapter.GameViewHolder> {
 
-    private List<Game> games = new ArrayList<>();
-    private OnGameClickListener listener;
+    private List<Game> games;
+    private final OnGameClickListener listener;
 
     public interface OnGameClickListener {
         void onGameClick(Game game);
     }
 
-    public GameAdapter(OnGameClickListener listener) {
+    public GameAdapter(List<Game> games, OnGameClickListener listener) {
+        this.games = games;
         this.listener = listener;
     }
 
     public void setGames(List<Game> newGames) {
         this.games = newGames;
-        notifyDataSetChanged();
+        notifyDataSetChanged(); // Ενημερώνει τη λίστα στην οθόνη
     }
 
     @NonNull
@@ -42,12 +42,13 @@ public class GameAdapter extends RecyclerView.Adapter<GameAdapter.GameViewHolder
         holder.tvProvider.setText(game.getProviderName());
         holder.tvRisk.setText("Risk: " + game.getRiskLevel());
 
+        // Όταν πατάει πάνω στο παιχνίδι
         holder.itemView.setOnClickListener(v -> listener.onGameClick(game));
     }
 
     @Override
     public int getItemCount() {
-        return games.size();
+        return games == null ? 0 : games.size();
     }
 
     static class GameViewHolder extends RecyclerView.ViewHolder {

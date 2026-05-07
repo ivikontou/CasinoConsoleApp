@@ -1,66 +1,78 @@
 package com.example.casinoconsoleapp;
-import common.Game;
 
-import android.app.AlertDialog;
 import android.os.Bundle;
-import android.text.InputType;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-
+import java.util.ArrayList;
 import java.util.List;
+
+import common.Game;
+import com.example.casinoconsoleapp.network.TcpClientManager;
 
 public class DashboardActivity extends AppCompatActivity {
 
-    private TextView tvCurrentBalance;
-    private Spinner spinnerRiskLevel, spinnerBetLimits;
-    private RecyclerView recyclerViewGames;
-    private GameAdapter adapter;
-
-    // Τοπικό State για το Υπόλοιπο του Παίκτη
     private double currentBalance = 0.0;
+    private TextView tvBalance;
+    private GameAdapter adapter;
+    private String playerName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard);
 
-        // Αρχικοποίηση Views
-        tvCurrentBalance = findViewById(R.id.tvCurrentBalance);
+        // Παίρνουμε το όνομα από το login
+        playerName = getIntent().getStringExtra("PLAYER_NAME");
+        if (playerName == null) playerName = "Player";
+        Toast.makeText(this, "Welcome " + playerName, Toast.LENGTH_SHORT).show();
+
+        // Σύνδεση με το XML
+        tvBalance = findViewById(R.id.tvCurrentBalance);
         Button btnAddTokens = findViewById(R.id.btnAddTokens);
-        Button btnSearchGames = findViewById(R.id.btnSearchGames);
-        spinnerRiskLevel = findViewById(R.id.spinnerRiskLevel);
-        spinnerBetLimits = findViewById(R.id.spinnerBetLimits);
-        recyclerViewGames = findViewById(R.id.recyclerViewGames);
+        Spinner spinnerRisk = findViewById(R.id.spinnerRiskLevel);
+        Spinner spinnerCategory = findViewById(R.id.spinnerBetLimits);
+        Button btnSearch = findViewById(R.id.btnSearchGames);
+        RecyclerView recyclerView = findViewById(R.id.recyclerViewGames);
 
-        updateBalanceUI();
-        setupSpinners();
-        setupRecyclerView();
+        // Ρύθμιση των Dropdowns (Spinners)
+        String[] riskLevels = {"Any", "low", "medium", "high"};
+        spinnerRisk.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, riskLevels));
 
-        // Listeners
-        btnAddTokens.setOnClickListener(v -> showAddTokensDialog());
+        String[] categories = {"Any", "$", "$$", "$$$"};
+        spinnerCategory.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories));
 
-        btnSearchGames.setOnClickListener(v -> {
-            String selectedRisk = spinnerRiskLevel.getSelectedItem().toString();
-            String selectedLimit = spinnerBetLimits.getSelectedItem().toString();
+        // Ρύθμιση της Λίστας (RecyclerView)
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new GameAdapter(new ArrayList<>(), game -> showBettingDialog(game));
+        recyclerView.setAdapter(adapter);
 
-            // Φτιάχνουμε το String που περιμένει ο Master (προσάρμοσέ το αν ο Master περιμένει άλλη σύνταξη)
+        // Κουμπί Προσθήκης Χρημάτων
+        btnAddTokens.setOnClickListener(v -> {
+            currentBalance += 100.0;
+            updateBalanceUI();
+            Toast.makeText(this, "Added 100 FUN!", Toast.LENGTH_SHORT).show();
+        });
+
+        // Κουμπί Αναζήτησης (Καλεί το Δίκτυο)
+        btnSearch.setOnClickListener(v -> {
+            String selectedRisk = spinnerRisk.getSelectedItem().toString();
+            String selectedLimit = spinnerCategory.getSelectedItem().toString();
+
             String searchCommand = "PLAYER_CMD|SEARCH|" + selectedRisk + "|" + selectedLimit;
-
             Toast.makeText(this, "Searching...", Toast.LENGTH_SHORT).show();
 
-            // ΚΛΗΣΗ ΣΤΟ ΠΡΑΓΜΑΤΙΚΟ ΔΙΚΤΥΟ (Μέλος Β)
-            com.example.casinoconsoleapp.network.TcpClientManager.INSTANCE.searchGames(searchCommand, new com.example.casinoconsoleapp.network.TcpClientManager.NetworkCallback<List<common.Game>>() {
+            TcpClientManager.INSTANCE.searchGames(searchCommand, new TcpClientManager.NetworkCallback<List<Game>>() {
                 @Override
-                public void onSuccess(List<common.Game> result) {
-                    // Αυτό τρέχει στο UI Thread χάρη στον Handler που έφτιαξε το Μέλος Β!
+                public void onSuccess(List<Game> result) {
                     adapter.setGames(result);
                 }
 
@@ -72,108 +84,61 @@ public class DashboardActivity extends AppCompatActivity {
         });
     }
 
-    private void setupSpinners() {
-        // Κατηγορίες Ρίσκου (όπως ορίζει η εκφώνηση)
-        String[] risks = {"Low", "Medium", "High"};
-        ArrayAdapter<String> riskAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, risks);
-        spinnerRiskLevel.setAdapter(riskAdapter);
-
-        // Όρια Πονταρίσματος
-        String[] limits = {"$", "$$", "$$$"};
-        ArrayAdapter<String> limitsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, limits);
-        spinnerBetLimits.setAdapter(limitsAdapter);
-    }
-
-    private void setupRecyclerView() {
-        recyclerViewGames.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new GameAdapter(this::showBettingDialog);
-        recyclerViewGames.setAdapter(adapter);
-    }
-
-    private void updateBalanceUI() {
-        tvCurrentBalance.setText("Current Balance: " + String.format("%.2f", currentBalance) + " FUN");
-    }
-
-    // Τοπική προσθήκη χρημάτων
-    private void showAddTokensDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Add Tokens");
-
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint("Amount to add");
-        builder.setView(input);
-
-        builder.setPositiveButton("Add", (dialog, which) -> {
-            String amountStr = input.getText().toString();
-            if (!amountStr.isEmpty()) {
-                currentBalance += Double.parseDouble(amountStr);
-                updateBalanceUI();
-            }
-        });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-        builder.show();
-    }
-
-    // Διαχείριση Πονταρίσματος
+    // Το Pop-up του Πονταρίσματος
     private void showBettingDialog(Game game) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Play " + game.name);
-        builder.setMessage("Provider: " + game.provider + "\nRisk: " + game.riskLevel);
+        builder.setTitle("Play " + game.getGameName());
 
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint("Bet Amount (FUN)");
+        input.setHint("Enter Bet Amount (" + game.getMinBet() + " - " + game.getMaxBet() + ")");
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         builder.setView(input);
 
         builder.setPositiveButton("PLAY", (dialog, which) -> {
             String amountStr = input.getText().toString();
-            if (amountStr.isEmpty()) {
-                Toast.makeText(this, "Please enter an amount", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            if (!amountStr.isEmpty()) {
+                double betAmount = Double.parseDouble(amountStr);
 
-            double betAmount = Double.parseDouble(amountStr);
+                // Τοπικός έλεγχος κανόνων
+                if (betAmount > currentBalance) {
+                    Toast.makeText(this, "Insufficient Balance!", Toast.LENGTH_LONG).show();
+                } else if (betAmount < game.getMinBet() || betAmount > game.getMaxBet()) {
+                    Toast.makeText(this, "Bet out of limits!", Toast.LENGTH_LONG).show();
+                } else {
+                    // Φτιάχνουμε το μήνυμα με το όνομα του παίκτη
+                    String betCommand = "PLAYER_CMD|BET|" + game.getGameName() + "|" + betAmount + "|" + playerName;
 
-            // ΤΟΠΙΚΟΣ ΕΛΕΓΧΟΣ ΛΟΓΙΚΗΣ
-            if (betAmount > currentBalance) {
-                Toast.makeText(this, "Insufficient Balance!", Toast.LENGTH_LONG).show();
-            } else {
-                // Παίρνουμε το όνομα του παίκτη που μας ήρθε από την MainActivity
-                String playerName = getIntent().getStringExtra("PLAYER_NAME");
-                if (playerName == null) playerName = "UnknownPlayer";
+                    // Αφαιρούμε τα λεφτά αμέσως
+                    currentBalance -= betAmount;
+                    updateBalanceUI();
 
-                // Φτιάχνουμε την εντολή βάζοντας ΚΑΙ το όνομα του παίκτη
-                String betCommand = "PLAYER_CMD|BET|" + game.getGameName() + "|" + betAmount + "|" + playerName;
+                    // Στέλνουμε το ποντάρισμα στον Server
+                    TcpClientManager.INSTANCE.placeBet(betCommand, new TcpClientManager.NetworkCallback<String>() {
+                        @Override
+                        public void onSuccess(String result) {
+                            new AlertDialog.Builder(DashboardActivity.this)
+                                    .setTitle("Αποτέλεσμα")
+                                    .setMessage(result)
+                                    .setPositiveButton("OK", null)
+                                    .show();
+                        }
 
-                // Αφαίρεση του ποσού και ενημέρωση UI
-                currentBalance -= betAmount;
-                updateBalanceUI();
-
-                // Αποστολή στο δίκτυο
-                com.example.casinoconsoleapp.network.TcpClientManager.INSTANCE.placeBet(betCommand, new com.example.casinoconsoleapp.network.TcpClientManager.NetworkCallback<String>() {
-                    @Override
-                    public void onSuccess(String result) {
-                        // Όταν έρθει η απάντηση (π.χ. "Κέρδισες" ή "Έχασες"), βγάζουμε μήνυμα
-                        new AlertDialog.Builder(DashboardActivity.this)
-                                .setTitle("Αποτέλεσμα Πονταρίσματος")
-                                .setMessage(result)
-                                .setPositiveButton("OK", null)
-                                .show();
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        Toast.makeText(DashboardActivity.this, "Σφάλμα: " + error, Toast.LENGTH_LONG).show();
-                        // Προαιρετικά: Επιστροφή των χρημάτων στο balance αν έπεσε ο server
-                        currentBalance += betAmount;
-                        updateBalanceUI();
-                    }
-                });
+                        @Override
+                        public void onError(String error) {
+                            Toast.makeText(DashboardActivity.this, "Σφάλμα: " + error, Toast.LENGTH_LONG).show();
+                            // Αν έπεσε ο server, του δίνουμε πίσω τα λεφτά
+                            currentBalance += betAmount;
+                            updateBalanceUI();
+                        }
+                    });
+                }
             }
         });
-
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        builder.setNegativeButton("Cancel", null);
         builder.show();
+    }
+
+    private void updateBalanceUI() {
+        tvBalance.setText("Current Balance: " + currentBalance + " FUN");
     }
 }
