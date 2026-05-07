@@ -38,9 +38,9 @@ public class GameAdapter extends RecyclerView.Adapter<GameAdapter.GameViewHolder
     @Override
     public void onBindViewHolder(@NonNull GameViewHolder holder, int position) {
         Game game = games.get(position);
-        holder.tvName.setText(game.name);
-        holder.tvProvider.setText(game.provider);
-        holder.tvRisk.setText("Risk: " + game.riskLevel);
+        holder.tvName.setText(game.getGameName());
+        holder.tvProvider.setText(game.getProviderName());
+        holder.tvRisk.setText("Risk: " + game.getRiskLevel());
 
         holder.itemView.setOnClickListener(v -> listener.onGameClick(game));
     }

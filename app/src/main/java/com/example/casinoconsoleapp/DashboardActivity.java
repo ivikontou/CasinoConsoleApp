@@ -1,4 +1,5 @@
 package com.example.casinoconsoleapp;
+import common.Game;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
@@ -12,6 +13,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 
 import java.util.List;
 
@@ -49,9 +51,24 @@ public class DashboardActivity extends AppCompatActivity {
             String selectedRisk = spinnerRiskLevel.getSelectedItem().toString();
             String selectedLimit = spinnerBetLimits.getSelectedItem().toString();
 
-            // Κλήση στο Mock Network (Αργότερα εδώ θα μπει το Thread με το Socket)
-            List<Game> results = MockNetwork.sendSearch(selectedRisk, selectedLimit);
-            adapter.setGames(results);
+            // Φτιάχνουμε το String που περιμένει ο Master (προσάρμοσέ το αν ο Master περιμένει άλλη σύνταξη)
+            String searchCommand = "PLAYER_CMD|SEARCH|" + selectedRisk + "|" + selectedLimit;
+
+            Toast.makeText(this, "Searching...", Toast.LENGTH_SHORT).show();
+
+            // ΚΛΗΣΗ ΣΤΟ ΠΡΑΓΜΑΤΙΚΟ ΔΙΚΤΥΟ (Μέλος Β)
+            com.example.casinoconsoleapp.network.TcpClientManager.INSTANCE.searchGames(searchCommand, new com.example.casinoconsoleapp.network.TcpClientManager.NetworkCallback<List<common.Game>>() {
+                @Override
+                public void onSuccess(List<common.Game> result) {
+                    // Αυτό τρέχει στο UI Thread χάρη στον Handler που έφτιαξε το Μέλος Β!
+                    adapter.setGames(result);
+                }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(DashboardActivity.this, "Σφάλμα: " + error, Toast.LENGTH_LONG).show();
+                }
+            });
         });
     }
 
@@ -122,13 +139,37 @@ public class DashboardActivity extends AppCompatActivity {
             if (betAmount > currentBalance) {
                 Toast.makeText(this, "Insufficient Balance!", Toast.LENGTH_LONG).show();
             } else {
+                // Παίρνουμε το όνομα του παίκτη που μας ήρθε από την MainActivity
+                String playerName = getIntent().getStringExtra("PLAYER_NAME");
+                if (playerName == null) playerName = "UnknownPlayer";
+
+                // Φτιάχνουμε την εντολή βάζοντας ΚΑΙ το όνομα του παίκτη
+                String betCommand = "PLAYER_CMD|BET|" + game.getGameName() + "|" + betAmount + "|" + playerName;
+
                 // Αφαίρεση του ποσού και ενημέρωση UI
                 currentBalance -= betAmount;
                 updateBalanceUI();
 
                 // Αποστολή στο δίκτυο
-                MockNetwork.sendBet(game, betAmount);
-                Toast.makeText(this, "Bet placed successfully!", Toast.LENGTH_SHORT).show();
+                com.example.casinoconsoleapp.network.TcpClientManager.INSTANCE.placeBet(betCommand, new com.example.casinoconsoleapp.network.TcpClientManager.NetworkCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        // Όταν έρθει η απάντηση (π.χ. "Κέρδισες" ή "Έχασες"), βγάζουμε μήνυμα
+                        new AlertDialog.Builder(DashboardActivity.this)
+                                .setTitle("Αποτέλεσμα Πονταρίσματος")
+                                .setMessage(result)
+                                .setPositiveButton("OK", null)
+                                .show();
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Toast.makeText(DashboardActivity.this, "Σφάλμα: " + error, Toast.LENGTH_LONG).show();
+                        // Προαιρετικά: Επιστροφή των χρημάτων στο balance αν έπεσε ο server
+                        currentBalance += betAmount;
+                        updateBalanceUI();
+                    }
+                });
             }
         });
 
