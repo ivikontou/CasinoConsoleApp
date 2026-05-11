@@ -1,7 +1,7 @@
 package com.example.casinoconsoleapp;
 
 import android.os.Bundle;
-import android.view.View; // ΑΥΤΟ ΕΛΕΙΠΕ!
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -12,7 +12,6 @@ import android.widget.Toast;
 import android.view.Gravity;
 import android.graphics.Typeface;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -60,7 +59,7 @@ public class DashboardActivity extends AppCompatActivity {
         }
         // --- ΤΕΛΟΣ ΠΡΟΣΘΗΚΗΣ ΓΙΑ ΤΟ PADDING ---
 
-
+        // Δυναμική προσθήκη Τίτλου
         if (rootLayout instanceof LinearLayout) {
             TextView titleTextView = new TextView(this);
             titleTextView.setText("Casino Console App");
@@ -72,8 +71,6 @@ public class DashboardActivity extends AppCompatActivity {
             // Προσθήκη στην κορυφή (index 0)
             ((LinearLayout) rootLayout).addView(titleTextView, 0);
         }
-
-
 
         // Παίρνουμε το όνομα από το login
         playerName = getIntent().getStringExtra("PLAYER_NAME");
@@ -100,12 +97,8 @@ public class DashboardActivity extends AppCompatActivity {
         adapter = new GameAdapter(new ArrayList<>(), this::showBettingDialog);
         recyclerView.setAdapter(adapter);
 
-        // Κουμπί Προσθήκης Χρημάτων
-        btnAddTokens.setOnClickListener(v -> {
-            currentBalance += 100.0;
-            updateBalanceUI();
-            Toast.makeText(this, "Added 100 FUN!", Toast.LENGTH_SHORT).show();
-        });
+        // Κουμπί Προσθήκης Χρημάτων (Ανοίγει το νέο Pop-up)
+        btnAddTokens.setOnClickListener(v -> showAddTokensDialog());
 
         // Κουμπί Αναζήτησης (Καλεί το Δίκτυο)
         btnSearch.setOnClickListener(v -> {
@@ -184,6 +177,43 @@ public class DashboardActivity extends AppCompatActivity {
         builder.setNegativeButton("Cancel", null);
         builder.show();
     }
+
+    // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΤΟ POP-UP ΠΡΟΣΘΗΚΗΣ ΧΡΗΜΑΤΩΝ ---
+    private void showAddTokensDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Add Tokens");
+
+        // Δημιουργία πεδίου κειμένου (EditText) για εισαγωγή αριθμού
+        final EditText input = new EditText(this);
+        input.setHint("Enter amount to add");
+        // Περιορισμός του πληκτρολογίου μόνο σε αριθμούς και δεκαδικά
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        builder.setView(input);
+
+        // Τι γίνεται όταν πατάει "ADD"
+        builder.setPositiveButton("ADD", (dialog, which) -> {
+            String amountStr = input.getText().toString();
+            if (!amountStr.isEmpty()) {
+                double amountToAdd = Double.parseDouble(amountStr);
+
+                // Αποτροπή αρνητικών ποσών ή μηδενικών
+                if (amountToAdd > 0) {
+                    currentBalance += amountToAdd;
+                    updateBalanceUI();
+                    Toast.makeText(this, "Added " + amountToAdd + " FUN!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Please enter a valid amount!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        // Τι γίνεται όταν πατάει "Cancel"
+        builder.setNegativeButton("Cancel", null);
+
+        // Εμφάνιση του Dialog
+        builder.show();
+    }
+    // --- ΤΕΛΟΣ ΝΕΑΣ ΣΥΝΑΡΤΗΣΗΣ ---
 
     private void updateBalanceUI() {
         tvBalance.setText("Current Balance: " + currentBalance + " FUN");
