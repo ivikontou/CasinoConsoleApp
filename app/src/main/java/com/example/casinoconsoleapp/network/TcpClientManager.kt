@@ -2,16 +2,16 @@ package com.example.casinoconsoleapp.network
 
 import android.os.Handler
 import android.os.Looper
-import common.Game
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.net.Socket
 import java.util.concurrent.Executors
+import common.Game
 
 object TcpClientManager {
 
     // ΠΡΟΣΟΧΗ: Το 10.0.2.2 είναι η IP που βλέπει ο Android Emulator το localhost του υπολογιστή σου!
-    private const val MASTER_IP = "10.0.2.2"
+    var MASTER_IP = "10.0.2.2" // Προεπιλογή για τοπικό τεστ
     private const val MASTER_PORT = 4321
 
     private val executor = Executors.newSingleThreadExecutor()

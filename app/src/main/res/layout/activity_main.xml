@@ -24,6 +24,15 @@
         android:inputType="textPersonName"
         android:layout_marginBottom="16dp"/>
 
+    <EditText
+        android:id="@+id/etMasterIp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Master IP (e.g. 192.168.1.5)"
+        android:inputType="text"
+        android:text="10.0.2.2"
+        android:layout_marginBottom="24dp"/>
+
     <Button
         android:id="@+id/btnLogin"
         android:layout_width="match_parent"
