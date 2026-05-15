@@ -14,19 +14,25 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val etPlayerName = findViewById<EditText>(R.id.etPlayerName)
+        val etMasterIp = findViewById<EditText>(R.id.etMasterIp) // ΝΕΟ
         val btnLogin = findViewById<Button>(R.id.btnLogin)
 
         btnLogin.setOnClickListener {
             val name = etPlayerName.text.toString().trim()
-            if (name.isNotEmpty()) {
-                // Σε πηγαίνει στο DashboardActivity.java
+            val ip = etMasterIp.text.toString().trim() // ΝΕΟ
+
+            if (name.isNotEmpty() && ip.isNotEmpty()) {
+                // Ενημερώνουμε το δίκτυο με τη νέα IP
+                com.example.casinoconsoleapp.network.TcpClientManager.MASTER_IP = ip
+
                 val intent = Intent(this, DashboardActivity::class.java)
                 intent.putExtra("PLAYER_NAME", name)
                 startActivity(intent)
                 finish()
             } else {
-                Toast.makeText(this, "Please enter your name!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please enter Name and IP!", Toast.LENGTH_SHORT).show()
             }
         }
+
     }
 }

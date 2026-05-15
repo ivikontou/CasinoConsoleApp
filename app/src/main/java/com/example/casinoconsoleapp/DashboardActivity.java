@@ -44,10 +44,10 @@ public class DashboardActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.recyclerViewGames);
 
         // Ρύθμιση των Dropdowns (Spinners)
-        String[] riskLevels = {"Any", "low", "medium", "high"};
+        String[] riskLevels = {"ANY", "low", "medium", "high"};
         spinnerRisk.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, riskLevels));
 
-        String[] categories = {"Any", "$", "$$", "$$$"};
+        String[] categories = {"ANY", "$", "$$", "$$$"};
         spinnerCategory.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories));
 
         // Ρύθμιση της Λίστας (RecyclerView)
@@ -66,8 +66,7 @@ public class DashboardActivity extends AppCompatActivity {
         btnSearch.setOnClickListener(v -> {
             String selectedRisk = spinnerRisk.getSelectedItem().toString();
             String selectedLimit = spinnerCategory.getSelectedItem().toString();
-
-            String searchCommand = "PLAYER_CMD|SEARCH|" + selectedRisk + "|" + selectedLimit;
+            String searchCommand = "PLAYER_CMD|SEARCH|" + selectedRisk + "|" + selectedLimit + "|ANY|0";
             Toast.makeText(this, "Searching...", Toast.LENGTH_SHORT).show();
 
             TcpClientManager.INSTANCE.searchGames(searchCommand, new TcpClientManager.NetworkCallback<List<Game>>() {
