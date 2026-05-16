@@ -168,4 +168,3 @@ public class DashboardActivity extends AppCompatActivity {
         tvBalance.setText("Current Balance: " + currentBalance + " FUN");
     }
 }
-}
