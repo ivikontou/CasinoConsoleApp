@@ -1,22 +1,14 @@
 package com.example.casinoconsoleapp;
 
 import android.os.Bundle;
-import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import android.view.Gravity;
-import android.graphics.Typeface;
-import android.widget.LinearLayout;
-
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -38,46 +30,12 @@ public class DashboardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard);
 
-        // --- ΕΝΑΡΞΗ ΠΡΟΣΘΗΚΗΣ ΓΙΑ ΤΟ PADDING ---
-        int paddingDp = 16;
-        float density = getResources().getDisplayMetrics().density;
-        int paddingPx = (int) (paddingDp * density);
-
-        // ΠΡΟΣΟΧΗ: Το root layout στο activity_dashboard.xml πρέπει να έχει android:id="@+id/dashboard_root"
-        View rootLayout = findViewById(R.id.dashboard_root);
-        if (rootLayout != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, insets) -> {
-                var systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-                v.setPadding(
-                        systemBars.left + paddingPx,
-                        systemBars.top,
-                        systemBars.right + paddingPx,
-                        systemBars.bottom
-                );
-                return insets;
-            });
-        }
-        // --- ΤΕΛΟΣ ΠΡΟΣΘΗΚΗΣ ΓΙΑ ΤΟ PADDING ---
-
-        // Δυναμική προσθήκη Τίτλου
-        if (rootLayout instanceof LinearLayout) {
-            TextView titleTextView = new TextView(this);
-            titleTextView.setText("Casino Console App");
-            titleTextView.setTextSize(28); // Μέγεθος
-            titleTextView.setTypeface(null, Typeface.BOLD); // Έντονα
-            titleTextView.setGravity(Gravity.CENTER_HORIZONTAL); // Κεντράρισμα
-            titleTextView.setPadding(0, 20, 0, 40); // Περιθώριο
-
-            // Προσθήκη στην κορυφή (index 0)
-            ((LinearLayout) rootLayout).addView(titleTextView, 0);
-        }
-
-        // Παίρνουμε το όνομα από το login
+        // Pairnoume to onoma apo to login
         playerName = getIntent().getStringExtra("PLAYER_NAME");
         if (playerName == null) playerName = "Player";
         Toast.makeText(this, "Welcome " + playerName, Toast.LENGTH_SHORT).show();
 
-        // Σύνδεση με το XML
+        // Syndesi me to XML
         tvBalance = findViewById(R.id.tvCurrentBalance);
         Button btnAddTokens = findViewById(R.id.btnAddTokens);
         Spinner spinnerRisk = findViewById(R.id.spinnerRiskLevel);
@@ -85,22 +43,22 @@ public class DashboardActivity extends AppCompatActivity {
         Button btnSearch = findViewById(R.id.btnSearchGames);
         RecyclerView recyclerView = findViewById(R.id.recyclerViewGames);
 
-        // Ρύθμιση των Dropdowns (Spinners)
+        // Rythmisi twn Dropdowns (Spinners)
         String[] riskLevels = {"ANY", "low", "medium", "high"};
         spinnerRisk.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, riskLevels));
 
         String[] categories = {"ANY", "$", "$$", "$$$"};
         spinnerCategory.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories));
 
-        // Ρύθμιση της Λίστας (RecyclerView)
+        // Rythmisi tis Listas (RecyclerView)
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new GameAdapter(new ArrayList<>(), this::showBettingDialog);
+        adapter = new GameAdapter(new ArrayList<>(), game -> showBettingDialog(game));
         recyclerView.setAdapter(adapter);
 
-        // Κουμπί Προσθήκης Χρημάτων (Ανοίγει το νέο Pop-up)
+        // Koumpi Prosthikis Xrimatwn (KALEI TO POP-UP PLEON)
         btnAddTokens.setOnClickListener(v -> showAddTokensDialog());
 
-        // Κουμπί Αναζήτησης (Καλεί το Δίκτυο)
+        // Koumpi Anazitisis (Kalei to Diktio)
         btnSearch.setOnClickListener(v -> {
             String selectedRisk = spinnerRisk.getSelectedItem().toString();
             String selectedLimit = spinnerCategory.getSelectedItem().toString();
@@ -110,18 +68,19 @@ public class DashboardActivity extends AppCompatActivity {
             TcpClientManager.INSTANCE.searchGames(searchCommand, new TcpClientManager.NetworkCallback<List<Game>>() {
                 @Override
                 public void onSuccess(List<Game> result) {
+                    // SWSTO: Enimerwsi UI sto Main Thread
                     runOnUiThread(() -> adapter.setGames(result));
                 }
 
                 @Override
                 public void onError(String error) {
-                    runOnUiThread(() -> Toast.makeText(DashboardActivity.this, "Σφάλμα: " + error, Toast.LENGTH_LONG).show());
+                    runOnUiThread(() -> Toast.makeText(DashboardActivity.this, "Sfalma: " + error, Toast.LENGTH_LONG).show());
                 }
             });
         });
     }
 
-    // Το Pop-up του Πονταρίσματος
+    // To Pop-up tou Pontarismatos
     private void showBettingDialog(Game game) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Play " + game.getGameName());
@@ -136,25 +95,25 @@ public class DashboardActivity extends AppCompatActivity {
             if (!amountStr.isEmpty()) {
                 double betAmount = Double.parseDouble(amountStr);
 
-                // Τοπικός έλεγχος κανόνων
+                // Topikos elegxos kanonwn
                 if (betAmount > currentBalance) {
                     Toast.makeText(this, "Insufficient Balance!", Toast.LENGTH_LONG).show();
                 } else if (betAmount < game.getMinBet() || betAmount > game.getMaxBet()) {
                     Toast.makeText(this, "Bet out of limits!", Toast.LENGTH_LONG).show();
                 } else {
-                    // Φτιάχνουμε το μήνυμα με το όνομα του παίκτη
+                    // Ftiaxnoume to minima me to onoma tou paikti
                     String betCommand = "PLAYER_CMD|BET|" + game.getGameName() + "|" + betAmount + "|" + playerName;
 
-                    // Αφαιρούμε τα λεφτά αμέσως
+                    // Afairoume ta lefta amesws
                     currentBalance -= betAmount;
                     updateBalanceUI();
 
-                    // Στέλνουμε το ποντάρισμα στον Server
+                    // Stelnoume to pontarisma ston Server
                     TcpClientManager.INSTANCE.placeBet(betCommand, new TcpClientManager.NetworkCallback<String>() {
                         @Override
                         public void onSuccess(String result) {
                             runOnUiThread(() -> new AlertDialog.Builder(DashboardActivity.this)
-                                    .setTitle("Αποτέλεσμα")
+                                    .setTitle("Apotelesma")
                                     .setMessage(result)
                                     .setPositiveButton("OK", null)
                                     .show());
@@ -163,8 +122,8 @@ public class DashboardActivity extends AppCompatActivity {
                         @Override
                         public void onError(String error) {
                             runOnUiThread(() -> {
-                                Toast.makeText(DashboardActivity.this, "Σφάλμα: " + error, Toast.LENGTH_LONG).show();
-                                // Αν έπεσε ο server, του δίνουμε πίσω τα λεφτά
+                                Toast.makeText(DashboardActivity.this, "Sfalma: " + error, Toast.LENGTH_LONG).show();
+                                // An epese o server, tou dinoume pisw ta lefta
                                 currentBalance += betAmount;
                                 updateBalanceUI();
                             });
@@ -177,25 +136,20 @@ public class DashboardActivity extends AppCompatActivity {
         builder.show();
     }
 
-    // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΤΟ POP-UP ΠΡΟΣΘΗΚΗΣ ΧΡΗΜΑΤΩΝ ---
+    // NEA SYNARTISI: To Pop-up Prosthikis Xrimatwn
     private void showAddTokensDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Add Tokens");
 
-        // Δημιουργία πεδίου κειμένου (EditText) για εισαγωγή αριθμού
         final EditText input = new EditText(this);
         input.setHint("Enter amount to add");
-        // Περιορισμός του πληκτρολογίου μόνο σε αριθμούς και δεκαδικά
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         builder.setView(input);
 
-        // Τι γίνεται όταν πατάει "ADD"
         builder.setPositiveButton("ADD", (dialog, which) -> {
             String amountStr = input.getText().toString();
             if (!amountStr.isEmpty()) {
                 double amountToAdd = Double.parseDouble(amountStr);
-
-                // Αποτροπή αρνητικών ποσών ή μηδενικών
                 if (amountToAdd > 0) {
                     currentBalance += amountToAdd;
                     updateBalanceUI();
@@ -206,15 +160,12 @@ public class DashboardActivity extends AppCompatActivity {
             }
         });
 
-        // Τι γίνεται όταν πατάει "Cancel"
         builder.setNegativeButton("Cancel", null);
-
-        // Εμφάνιση του Dialog
         builder.show();
     }
-    // --- ΤΕΛΟΣ ΝΕΑΣ ΣΥΝΑΡΤΗΣΗΣ ---
 
     private void updateBalanceUI() {
         tvBalance.setText("Current Balance: " + currentBalance + " FUN");
     }
+}
 }
