@@ -6,7 +6,9 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true"
-    android:gravity="center">
+    android:gravity="center"
+    android:paddingHorizontal="32dp"
+    android:background="#cdd3ec">
 
     <TextView
         android:layout_width="wrap_content"
@@ -14,6 +16,7 @@
         android:text="Casino Console App"
         android:textSize="32sp"
         android:textStyle="bold"
+        android:textColor="@android:color/black"
         android:layout_marginBottom="32dp"/>
 
     <EditText
@@ -22,6 +25,8 @@
         android:layout_height="wrap_content"
         android:hint="Enter Player Name"
         android:inputType="textPersonName"
+        android:textColorHint="#555555"
+        android:textColor="@android:color/black"
         android:layout_marginBottom="16dp"/>
 
     <EditText
@@ -31,11 +36,15 @@
         android:hint="Master IP (e.g. 192.168.1.5)"
         android:inputType="text"
         android:text="10.0.2.2"
+        android:textColorHint="#555555"
+        android:textColor="@android:color/black"
         android:layout_marginBottom="24dp"/>
 
     <Button
         android:id="@+id/btnLogin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="LOGIN" />
+        android:text="LOGIN"
+        android:backgroundTint="#8f9dd5"
+        android:textColor="@android:color/black" />
 </LinearLayout>
