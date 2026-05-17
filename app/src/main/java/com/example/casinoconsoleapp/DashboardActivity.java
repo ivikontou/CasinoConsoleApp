@@ -30,12 +30,12 @@ public class DashboardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard);
 
-        // Pairnoume to onoma apo to login
+        //pernoume to onoma apo to login
         playerName = getIntent().getStringExtra("PLAYER_NAME");
         if (playerName == null) playerName = "Player";
         Toast.makeText(this, "Welcome " + playerName, Toast.LENGTH_SHORT).show();
 
-        // Syndesi me to XML
+        //syndesi me to XML
         tvBalance = findViewById(R.id.tvCurrentBalance);
         Button btnAddTokens = findViewById(R.id.btnAddTokens);
         Spinner spinnerRisk = findViewById(R.id.spinnerRiskLevel);
@@ -43,22 +43,21 @@ public class DashboardActivity extends AppCompatActivity {
         Button btnSearch = findViewById(R.id.btnSearchGames);
         RecyclerView recyclerView = findViewById(R.id.recyclerViewGames);
 
-        // Rythmisi twn Dropdowns (Spinners)
+        //rithmisi twn dropdowns
         String[] riskLevels = {"ANY", "low", "medium", "high"};
         spinnerRisk.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, riskLevels));
 
         String[] categories = {"ANY", "$", "$$", "$$$"};
         spinnerCategory.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories));
 
-        // Rythmisi tis Listas (RecyclerView)
+        //rithmisi listas
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new GameAdapter(new ArrayList<>(), game -> showBettingDialog(game));
         recyclerView.setAdapter(adapter);
 
-        // Koumpi Prosthikis Xrimatwn
         btnAddTokens.setOnClickListener(v -> showAddTokensDialog());
 
-        // Koumpi Anazitisis (Kalei to Diktio)
+        //koumpi search
         btnSearch.setOnClickListener(v -> {
             String selectedRisk = spinnerRisk.getSelectedItem().toString();
             String selectedLimit = spinnerCategory.getSelectedItem().toString();
@@ -79,7 +78,7 @@ public class DashboardActivity extends AppCompatActivity {
         });
     }
 
-    // To Pop-up tou Pontarismatos
+    //pop-up me to pontarisma
     private void showBettingDialog(Game game) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Play " + game.getGameName());
@@ -101,15 +100,13 @@ public class DashboardActivity extends AppCompatActivity {
         builder.setPositiveButton("PLAY", null);
         builder.setNegativeButton("Cancel", null);
 
-        // Kataskeyi kai emfanisi tou dialogou gia na paroume to window
         AlertDialog dialog = builder.create();
         dialog.show();
 
-        // ALLAGI: Kanoume OLO to parathyro mple gia na fygoun ta leyka borders panw-katw
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor("#cdd3ec")));
         }
-        // Kleidwnoume skouro xrwma sta koympia gia na fainovtai sto mple
+
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(android.graphics.Color.BLACK);
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(android.graphics.Color.BLACK);
 
@@ -127,18 +124,39 @@ public class DashboardActivity extends AppCompatActivity {
 
                     currentBalance -= betAmount;
                     updateBalanceUI();
-                    dialog.dismiss(); // Kleinoume to input pop-up
+                    dialog.dismiss(); //kleinoume to input pop-up
 
                     TcpClientManager.INSTANCE.placeBet(betCommand, new TcpClientManager.NetworkCallback<String>() {
                         @Override
                         public void onSuccess(String result) {
                             runOnUiThread(() -> {
+
+                                //Spame to minima tou server gia na paroume to poso! ---
+                                String serverMessage = result;
+                                double wonAmount = 0.0;
+
+                                // O Server epistrefei panta "PAYOUT_RESULT|poso|minima" h "REFUND|poso|minima"
+                                if (result.contains("|")) {
+                                    String[] parts = result.split("\\|");
+                                    if (parts.length >= 3) {
+                                        try {
+                                            wonAmount = Double.parseDouble(parts[1]);
+                                            serverMessage = parts[2]; // Kratame mono to katharo minima gia to Pop-up
+                                        } catch (NumberFormatException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                }
+
+                                // Prosthetoume to poso pou kerdise (i pou egine refund) sto Balance!
+                                currentBalance += wonAmount;
+                                updateBalanceUI(); // Ananewnoume tin othoni me to neo ypoloipo
+
                                 android.widget.LinearLayout customLayout = new android.widget.LinearLayout(DashboardActivity.this);
                                 customLayout.setOrientation(android.widget.LinearLayout.VERTICAL);
                                 customLayout.setPadding(60, 60, 60, 60);
                                 customLayout.setGravity(android.view.Gravity.CENTER);
 
-                                // 1. Orizουμε μια μεταβλητη για το xrwμα όλου του παραθύρου
                                 String windowColor = "#cdd3ec";
 
                                 TextView tvEmoji = new TextView(DashboardActivity.this);
@@ -147,27 +165,28 @@ public class DashboardActivity extends AppCompatActivity {
                                 tvEmoji.setPadding(0, 0, 0, 20);
 
                                 TextView tvMessage = new TextView(DashboardActivity.this);
-                                tvMessage.setText(result);
+                                // Emfanizoume to katharo minima (xwris to PAYOUT_RESULT|)
+                                tvMessage.setText(serverMessage);
                                 tvMessage.setTextSize(22);
                                 tvMessage.setGravity(android.view.Gravity.CENTER);
                                 tvMessage.setTypeface(null, android.graphics.Typeface.BOLD);
 
                                 String dialogTitle = "Apotelesma";
-                                String lowerResult = result.toLowerCase();
+                                String lowerResult = serverMessage.toLowerCase();
 
-                                // --- ELEGXOS KAI XROMATA ---
-                                if (lowerResult.contains("win") || lowerResult.contains("won") || lowerResult.contains("kerd") || lowerResult.contains("κερδ")) {
+                                //apotelesmata
+                                if (lowerResult.contains("win") || lowerResult.contains("won") || lowerResult.contains("kerd") || lowerResult.contains("κερδ") || lowerResult.contains("jackpot")) {
                                     tvEmoji.setText("🎉 💰");
                                     tvMessage.setTextColor(android.graphics.Color.parseColor("#1B5E20"));
                                     customLayout.setBackgroundColor(android.graphics.Color.parseColor("#E8F5E9"));
                                     dialogTitle = "Money! Money! Money!";
-                                    windowColor = "#E8F5E9"; // 2. EDW: Olo to parathyro ginetai prasino
+                                    windowColor = "#E8F5E9";
                                 } else if (lowerResult.contains("lose") || lowerResult.contains("lost") || lowerResult.contains("xas") || lowerResult.contains("χασ")) {
                                     tvEmoji.setText("📉 😞");
                                     tvMessage.setTextColor(android.graphics.Color.parseColor("#B71C1C"));
                                     customLayout.setBackgroundColor(android.graphics.Color.parseColor("#FFEBEE"));
                                     dialogTitle = "No Money! No Money! No Money!";
-                                    windowColor = "#FFEBEE"; // 3. EDW: Olo to parathyro ginetai kokkino
+                                    windowColor = "#FFEBEE";
                                 } else {
                                     tvEmoji.setText("ℹ️");
                                     tvMessage.setTextColor(android.graphics.Color.BLACK);
@@ -186,7 +205,7 @@ public class DashboardActivity extends AppCompatActivity {
                                 AlertDialog resDialog = resBuilder.create();
                                 resDialog.show();
 
-                                // 4. EDW: To parathyro pairnei dynamically to swsto xrwma (Prasino i Kokkino)
+                                //to parathyro pairnei dynamically to swsto xrwma (Prasino h Kokkino)
                                 if (resDialog.getWindow() != null) {
                                     resDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor(windowColor)));
                                 }
@@ -208,7 +227,7 @@ public class DashboardActivity extends AppCompatActivity {
         });
     }
 
-    // To Pop-up Prosthikis Xrimatwn
+    //pop-up add tokens
     private void showAddTokensDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Add Tokens");
@@ -245,7 +264,6 @@ public class DashboardActivity extends AppCompatActivity {
         AlertDialog dialog = builder.create();
         dialog.show();
 
-        // ALLAGI: OLO to parathyro twn tokens ginetai pleon katamaplo apo akri se akri
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor("#cdd3ec")));
         }

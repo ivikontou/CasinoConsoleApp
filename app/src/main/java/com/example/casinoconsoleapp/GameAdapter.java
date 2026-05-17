@@ -1,64 +1,109 @@
 package com.example.casinoconsoleapp;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.util.List;
 import common.Game;
 
 public class GameAdapter extends RecyclerView.Adapter<GameAdapter.GameViewHolder> {
 
     private List<Game> games;
-    private final OnGameClickListener listener;
+    private OnItemClickListener listener;
 
-    public interface OnGameClickListener {
-        void onGameClick(Game game);
+    // Interface gia na piasoume to click se ena paixnidi
+    public interface OnItemClickListener {
+        void onItemClick(Game game);
     }
 
-    public GameAdapter(List<Game> games, OnGameClickListener listener) {
+    // Constructor tou Adapter
+    public GameAdapter(List<Game> games, OnItemClickListener listener) {
         this.games = games;
         this.listener = listener;
     }
 
-    public void setGames(List<Game> newGames) {
-        this.games = newGames;
-        notifyDataSetChanged(); // Ενημερώνει τη λίστα στην οθόνη
+    // Methodos gia na ananewnoume th lista me nea dedomena (px meta to search)
+    public void setGames(List<Game> games) {
+        this.games = games;
+        notifyDataSetChanged();
     }
 
     @NonNull
     @Override
     public GameViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Fortwnoume to layout tou kathe antikeimenou (item_game.xml)
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_game, parent, false);
         return new GameViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull GameViewHolder holder, int position) {
+        // Pairnoume to paixnidi sth sugkekrimeni thesi ths listas
         Game game = games.get(position);
-        holder.tvName.setText(game.getGameName());
+
+        // Gemizoume ta TextViews me ta stoixeia tou paixnidiou
+        holder.tvGameName.setText(game.getGameName());
         holder.tvProvider.setText(game.getProviderName());
         holder.tvRisk.setText("Risk: " + game.getRiskLevel());
 
-        // Όταν πατάει πάνω στο παιχνίδι
-        holder.itemView.setOnClickListener(v -> listener.onGameClick(game));
+        // --- I LOGIKI TIS EIKONAS ---
+        String base64Image = game.getGameLogo();
+
+        if (base64Image != null && !base64Image.isEmpty()) {
+            // 1. Vazoume ti varia douleia (metatropi eikonas) se neo Background Thread gia na min kollaei to UI
+            new Thread(() -> {
+                try {
+                    // Diavazoume to byte array apo to base64 string
+                    byte[] bytes = Base64.decode(base64Image, Base64.DEFAULT);
+                    // Metatrepoume ta bytes se Bitmap
+                    Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+
+                    // 2. Epistrefoume sto Main (UI) Thread MONO gia na emfanisoume tin eikona sto ImageView
+                    holder.itemView.post(() -> {
+                        holder.imgGameLogo.setImageBitmap(bmp);
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // An xalasei i metatropi (px lathos string i corrupt data), vale tin proepilegmeni eikona
+                    holder.itemView.post(() -> {
+                        holder.imgGameLogo.setImageResource(R.mipmap.ic_launcher);
+                    });
+                }
+            }).start();
+        } else {
+            // An to paixnidi den exei katholou logo sto JSON (einai keno string), vazoume kateytheian to default
+            holder.imgGameLogo.setImageResource(R.mipmap.ic_launcher);
+        }
+
+        // Bazoume ton listener sto click gia na anoigei to popup tou pontarismatos
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(game));
     }
 
     @Override
     public int getItemCount() {
-        return games == null ? 0 : games.size();
+        return games.size();
     }
 
+    // Eswteriki klasi gia na kratame ta Views kathe stoixeiou
     static class GameViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvProvider, tvRisk;
+        TextView tvGameName, tvProvider, tvRisk;
+        ImageView imgGameLogo; // To ImageView gia to logotypo
 
         public GameViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvName = itemView.findViewById(R.id.tvGameName);
+            // Syndesh twn metavlitwn me ta id apo to item_game.xml
+            tvGameName = itemView.findViewById(R.id.tvGameName);
             tvProvider = itemView.findViewById(R.id.tvProvider);
             tvRisk = itemView.findViewById(R.id.tvRisk);
+            imgGameLogo = itemView.findViewById(R.id.imgGameLogo);
         }
     }
 }

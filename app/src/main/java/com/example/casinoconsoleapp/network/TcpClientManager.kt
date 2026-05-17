@@ -10,14 +10,13 @@ import common.Game
 
 object TcpClientManager {
 
-    // ΠΡΟΣΟΧΗ: Το 10.0.2.2 είναι η IP που βλέπει ο Android Emulator το localhost του υπολογιστή σου!
-    var MASTER_IP = "10.0.2.2" // Προεπιλογή για τοπικό τεστ
+    var MASTER_IP = "10.0.2.2" //proepilogi gia test runs
     private const val MASTER_PORT = 4321
 
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // Interface για να ειδοποιούμε το UI όταν έρθουν τα δεδομένα
+    //interface gia na eidopoioume to ui otan erthoun ta dedomena
     interface NetworkCallback<T> {
         fun onSuccess(result: T)
         fun onError(error: String)
@@ -26,24 +25,24 @@ object TcpClientManager {
     fun searchGames(command: String, callback: NetworkCallback<List<Game>>) {
         executor.execute {
             try {
-                // Ανοίγουμε Socket. Κλείνει αυτόματα χάρη στο `use` (σαν το try-with-resources της Java)
+                //anoigoume socket kai tha klisei automata me to use
                 Socket(MASTER_IP, MASTER_PORT).use { socket ->
                     socket.soTimeout = 5000 // 5 δευτερόλεπτα timeout
                     val out = ObjectOutputStream(socket.getOutputStream())
                     out.flush()
                     val input = ObjectInputStream(socket.getInputStream())
 
-                    // Στέλνουμε το String (π.χ. "PLAYER_CMD|SEARCH|low|$$")
+                    //stelnoume to string
                     out.writeObject(command)
                     out.flush()
 
-                    // Περιμένουμε (μπλοκάρει το background thread, ΟΧΙ το UI)
+                    //perimenoume (blockarei to background thread mono)
                     val response = input.readObject()
 
                     if (response is List<*>) {
                         @Suppress("UNCHECKED_CAST")
                         val games = response as List<Game>
-                        // Στέλνουμε το αποτέλεσμα στο Main Thread για να ενημερωθεί η οθόνη
+                        //send apotelesma sto main thread gia na enimerwthei h othoni
                         mainHandler.post { callback.onSuccess(games) }
                     } else {
                         mainHandler.post { callback.onError("Άγνωστη μορφή δεδομένων από τον Master.") }
